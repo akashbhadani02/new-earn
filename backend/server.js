@@ -1,7 +1,20 @@
 const express=require('express'),path=require('path'),jwt=require('jsonwebtoken'),bcrypt=require('bcryptjs'),mongoose=require('mongoose');
 const User=require('./models/User'),Task=require('./models/Task'),Submission=require('./models/Submission'),Transaction=require('./models/Transaction');
 const app=express(),PORT=process.env.PORT||3000,SECRET=process.env.JWT_SECRET||'CHANGE_ME';
-app.use(express.json({limit:'10mb'}));app.use(express.static(path.join(__dirname,'../frontend')));
+app.use(express.json({limit:'10mb'}));app.use(express.static(path.join(__dirname,'../frontend')));let dbPromise;
+async function connectDB(){
+  if(!process.env.MONGODB_URI) throw new Error('MONGODB_URI is not configured');
+  if(mongoose.connection.readyState===1) return;
+  if(!dbPromise) dbPromise=mongoose.connect(process.env.MONGODB_URI,{serverSelectionTimeoutMS:10000}).catch(err=>{dbPromise=null;throw err});
+  await dbPromise;
+}
+app.use(async (req,res,next)=>{
+  if(req.path.startsWith('/api/')){
+    try{await connectDB();return next()}catch(e){console.error('MongoDB connection error:',e.message);return res.status(503).json({error:'Database connection failed',details:e.message})}
+  }
+  next();
+});
+
 const ADMIN_USER=process.env.ADMIN_USER||'admin',ADMIN_PASS=process.env.ADMIN_PASSWORD||'deoxy';
 const products=[
 ['Wireless Earbuds',45,'https://images.unsplash.com/photo-1606220945770-b5b6c2c55bf1?auto=format&fit=crop&w=900&q=80'],
@@ -38,15 +51,6 @@ app.post('/api/admin/submissions/:id/approve',auth,admin,async(req,res)=>{const 
 app.post('/api/admin/submissions/:id/reject',auth,admin,async(req,res)=>{const s=await Submission.findOneAndUpdate({_id:req.params.id,status:'under_review'},{$set:{status:'rejected',rejectionReason:req.body.reason||'Proof/review could not be verified.',reviewedAt:new Date()}},{new:true});if(!s)return res.status(400).json({error:'Submission already reviewed or not found'});res.json({ok:true})});
 app.get('/api/health',(req,res)=>res.json({ok:true,database:mongoose.connection.readyState===1}));
 app.get('*',(req,res)=>res.sendFile(path.join(__dirname,'../frontend/index.html')));
-let dbPromise;
-async function connectDB(){
-  if(!process.env.MONGODB_URI) return;
-  if(mongoose.connection.readyState===1) return;
-  if(!dbPromise) dbPromise=mongoose.connect(process.env.MONGODB_URI);
-  await dbPromise;
-}
-app.use(async (req,res,next)=>{try{await connectDB();next()}catch(e){console.error(e);res.status(500).json({error:'Database connection failed'})}});
-if(require.main===module){
-  app.listen(PORT,()=>console.log(`EarnFlow running on ${PORT}`));
-}
+
+if(require.main===module){app.listen(PORT,()=>console.log(`EarnFlow running on ${PORT}`));}
 module.exports=app;

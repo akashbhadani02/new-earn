@@ -25,3 +25,14 @@ Change the production password in Vercel environment variables. Never commit `.e
 
 ## Important
 Use genuine feedback only; do not fabricate or automate reviews.
+
+## If registration fails on Vercel
+Make sure these Vercel Environment Variables are set for Production (and Preview if testing there):
+- `MONGODB_URI`
+- `JWT_SECRET`
+- `ADMIN_USER`
+- `ADMIN_PASSWORD`
+
+In MongoDB Atlas, add the Vercel deployment network access as required by your security policy. For a quick test you can temporarily allow `0.0.0.0/0`, then tighten access for production.
+
+Test `GET /api/health`. It should return `{"ok":true,"database":true}`.
