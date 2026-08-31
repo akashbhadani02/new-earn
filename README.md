@@ -1,38 +1,30 @@
-# EarnFlow — MongoDB + Vercel fixed
+# EarnFlow — MongoDB + Vercel
 
-This version uses a Vercel serverless entrypoint at `api/index.js`, with Express serving the frontend and API.
+## IMPORTANT Vercel setup
+Upload the contents of this folder to the **root of your GitHub repository**. Do not put them inside another `earnflow/` folder unless you set Vercel Root Directory to that folder.
 
-## Deploy
-1. Push the contents of this folder to GitHub.
-2. Import the repository into Vercel. Leave Root Directory as the repository root.
-3. Vercel detects `api/index.js` automatically.
-4. Add environment variables:
-   - `MONGODB_URI`
-   - `JWT_SECRET`
-   - `ADMIN_USER`
-   - `ADMIN_PASSWORD`
-5. Redeploy.
+The API uses a Vercel catch-all function at `api/[...all].js`, so these routes work:
+- `/api/health`
+- `/api/auth/register`
+- `/api/auth/login`
+- `/api/auth/admin-login`
+- `/api/tasks`
+- `/api/me`
+- `/api/submissions`
+- `/api/admin/submissions`
 
-## Local
-`npm install`
-`node backend/server.js`
-
-## Demo admin
-Username: admin
-Password: deoxy
-
-Change the production password in Vercel environment variables. Never commit `.env`.
-
-## Important
-Use genuine feedback only; do not fabricate or automate reviews.
-
-## If registration fails on Vercel
-Make sure these Vercel Environment Variables are set for Production (and Preview if testing there):
+Environment Variables in Vercel:
 - `MONGODB_URI`
 - `JWT_SECRET`
 - `ADMIN_USER`
 - `ADMIN_PASSWORD`
 
-In MongoDB Atlas, add the Vercel deployment network access as required by your security policy. For a quick test you can temporarily allow `0.0.0.0/0`, then tighten access for production.
+After adding/changing variables, Redeploy.
 
-Test `GET /api/health`. It should return `{"ok":true,"database":true}`.
+MongoDB Atlas must allow connections from your deployment (for initial testing, configure Network Access appropriately).
+
+Local:
+`npm install`
+`npm start`
+
+Admin demo: `admin` / `deoxy` (change for production).

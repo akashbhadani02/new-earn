@@ -54,5 +54,5 @@ app.post('/api/admin/submissions/:id/reject',auth,admin,async(req,res)=>{const s
 app.get('/api/health',(req,res)=>res.json({ok:true,database:mongoose.connection.readyState===1}));
 app.get('*',(req,res)=>res.sendFile(path.join(__dirname,'../public/index.html')));
 
-if(require.main===module){ensureDb().catch(e=>console.error('MongoDB connection:',e.message));app.listen(PORT,()=>console.log(`EarnFlow running on ${PORT}`));}
+if(require.main===module){connectDB().catch(e=>console.error('MongoDB connection:',e.message));app.listen(PORT,()=>console.log(`EarnFlow running on ${PORT}`));}
 module.exports=app;
