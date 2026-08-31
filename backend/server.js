@@ -43,8 +43,32 @@ const products=[
 function auth(req,res,next){try{const h=req.headers.authorization||'';if(!h.startsWith('Bearer '))throw 0;req.user=jwt.verify(h.slice(7),SECRET);next()}catch(e){res.status(401).json({error:'Unauthorized'})}}
 function admin(req,res,next){if(req.user?.role!=='admin')return res.status(403).json({error:'Admin only'});next()}
 app.post('/api/auth/admin-login',(req,res)=>{if(req.body.username===ADMIN_USER&&req.body.password===ADMIN_PASS)return res.json({token:jwt.sign({role:'admin',username:ADMIN_USER},SECRET,{expiresIn:'8h'})});res.status(401).json({error:'Invalid admin credentials'})});
-app.post('/api/auth/register',async(req,res)=>{try{const {username,password}=req.body;if(!username||!password||password.length<6)return res.status(400).json({error:'Username and password (6+ chars) required'});const u=await User.create({username,passwordHash:await bcrypt.hash(password,12)});res.json({id:u._id,username:u.username})}catch(e){res.status(400).json({error:'Username already exists'})}});
-app.post('/api/auth/login',async(req,res)=>{const u=await User.findOne({username:req.body.username});if(!u||!(await bcrypt.compare(req.body.password,u.passwordHash)))return res.status(401).json({error:'Invalid login'});res.json({token:jwt.sign({role:'user',id:String(u._id),username:u.username},SECRET,{expiresIn:'7d'})})});
+app.post('/api/auth/register',async(req,res)=>{
+  try{
+    const username=String(req.body.username||'').trim().toLowerCase();
+    const password=String(req.body.password||'');
+    if(!/^[a-z0-9_]{3,30}$/.test(username)) return res.status(400).json({error:'Username must be 3-30 characters: letters, numbers or underscore.'});
+    if(password.length<6) return res.status(400).json({error:'Password must be at least 6 characters.'});
+    const existing=await User.findOne({username});
+    if(existing) return res.status(409).json({error:'Username already registered. Please login.'});
+    const u=await User.create({username,passwordHash:await bcrypt.hash(password,12)});
+    const token=jwt.sign({role:'user',id:String(u._id),username:u.username},SECRET,{expiresIn:'7d'});
+    return res.status(201).json({ok:true,id:String(u._id),username:u.username,token});
+  }catch(e){
+    console.error('Register error:',e);
+    if(e&&e.code===11000) return res.status(409).json({error:'Username already registered. Please login.'});
+    return res.status(500).json({error:'Registration failed. Please try again.'});
+  }
+});
+app.post('/api/auth/login',async(req,res)=>{
+  try{
+    const username=String(req.body.username||'').trim().toLowerCase();
+    const password=String(req.body.password||'');
+    const u=await User.findOne({username});
+    if(!u||!(await bcrypt.compare(password,u.passwordHash))) return res.status(401).json({error:'Invalid username or password'});
+    return res.json({ok:true,token:jwt.sign({role:'user',id:String(u._id),username:u.username},SECRET,{expiresIn:'7d'}),username:u.username});
+  }catch(e){console.error('Login error:',e);return res.status(500).json({error:'Login failed. Please try again.'})}
+});
 app.get('/api/tasks',async(req,res)=>{let ts=await Task.find({active:true}).sort({_id:1});if(ts.length<20){await Task.deleteMany({});await Task.insertMany(products.map((p,i)=>({title:`Review Task ${i+1}: ${p[0]}`,product:p[0],imageUrl:p[2],reward:p[1],durationSeconds:30,description:`Give genuine feedback about ${p[0]} based on your real experience or the supplied product information, then upload proof of the completed review activity.`})));ts=await Task.find({active:true}).sort({_id:1})}res.json(ts)});
 app.get('/api/me',auth,async(req,res)=>{if(req.user.role!=='user')return res.status(403).json({error:'User only'});const u=await User.findById(req.user.id).select('username wallet');const s=await Submission.find({userId:req.user.id}).populate('taskId','title product reward').sort({submittedAt:-1});res.json({user:u,submissions:s})});
 app.post('/api/submissions',auth,async(req,res)=>{try{if(req.user.role!=='user')return res.status(403).json({error:'User only'});const {taskId,review,proofData}=req.body;if(!taskId||!review||review.trim().length<20||!proofData)return res.status(400).json({error:'Task, genuine review and proof are required'});const exists=await Submission.findOne({userId:req.user.id,taskId,status:{$in:['under_review','approved']}});if(exists)return res.status(409).json({error:'Task already submitted'});const s=await Submission.create({userId:req.user.id,taskId,review:review.trim(),proofData});res.json({id:s._id,status:s.status})}catch(e){res.status(400).json({error:e.message})}});

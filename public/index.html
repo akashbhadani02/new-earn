@@ -11,8 +11,24 @@
 let token=localStorage.getItem("ef_user"),adminToken=localStorage.getItem("ef_admin"),tasks=[],active=null,seconds=30,tm=null,proof="";
 const $=id=>document.getElementById(id),api=async(u,o={})=>{let r=await fetch(u,{...o,headers:{"Content-Type":"application/json",...(o.headers||{})}});let text=await r.text(),j;try{j=JSON.parse(text)}catch(e){throw Error(`Server error (${r.status}). Check Vercel API/Environment Variables.`)}if(!r.ok)throw Error(j.error||"Request failed");return j};
 async function loadTasks(){tasks=await api("/api/tasks");render()}
-function userLogin(){api("/api/auth/login",{method:"POST",body:JSON.stringify({username:$("un").value,password:$("pw").value})}).then(x=>{token=x.token;localStorage.setItem("ef_user",token);startUser()}).catch(e=>$("msg").textContent=e.message)}
-function registerUser(){api("/api/auth/register",{method:"POST",body:JSON.stringify({username:$("un").value,password:$("pw").value})}).then(()=>{$("msg").textContent="Registered. Now login."}).catch(e=>$("msg").textContent=e.message)}
+async function userLogin(){
+  const username=$("un").value.trim(), password=$("pw").value;
+  if(!username||!password){$("msg").textContent='Enter username and password.';return}
+  $("msg").textContent='Logging in...';
+  try{const x=await api("/api/auth/login",{method:"POST",body:JSON.stringify({username,password})});token=x.token;localStorage.setItem("ef_user",token);await startUser()}catch(e){$("msg").textContent=e.message}
+}
+async function registerUser(){
+  const username=$("un").value.trim(), password=$("pw").value;
+  if(!username||!password){$("msg").textContent='Enter username and password.';return}
+  $("msg").textContent='Creating account...';
+  try{
+    const x=await api("/api/auth/register",{method:"POST",body:JSON.stringify({username,password})});
+    // Registration returns a token, so the new account is immediately logged in.
+    token=x.token;localStorage.setItem("ef_user",token);
+    $("msg").textContent='Account created successfully.';
+    await startUser();
+  }catch(e){$("msg").textContent=e.message}
+}
 async function startUser(){$("login").style.display="none";$("main").style.display="block";await loadTasks();await me()}
 async function me(){try{let x=await api("/api/me",{headers:{Authorization:"Bearer "+token}});$("wallet").textContent=Number(x.user.wallet).toFixed(2);$("wstat").textContent="₹"+Number(x.user.wallet).toFixed(2);$("submitted").textContent=x.submissions.length;$("under").textContent=x.submissions.filter(s=>s.status==="under_review").length;$("appr").textContent=x.submissions.filter(s=>s.status==="approved").length;let map=new Map(x.submissions.map(s=>[s.task_id,s]));tasks=tasks.map(t=>({...t,status:map.get(t.id)?.status||"pending"}));render()}catch(e){logout()}}
 function render(){ $("tasks").innerHTML=tasks.map(t=>`<div class="task"><img src="${t.image_url}"><div class="body"><b>${t.title}</b><p class="muted">${t.description}</p><div class="reward">+₹${t.reward}</div><div class="muted">🛍️ ${t.product} · Genuine review + proof</div><div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px"><span class="badge ${t.status||"pending"}">${t.status==="under_review"?"UNDER REVIEW":t.status==="approved"?"APPROVED":t.status==="rejected"?"REJECTED":"REWARD LOCKED"}</span>${t.status==="pending"||t.status==="rejected"?`<button class="btn primary" onclick="start(${t.id})">Start Review</button>`:""}</div></div></div>`).join("")}
