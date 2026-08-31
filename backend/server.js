@@ -45,6 +45,7 @@ function makeToken(payload, expiresIn) { return jwt.sign(payload, SECRET, { expi
 function auth(req,res,next){ try { const h=req.headers.authorization||''; if(!h.startsWith('Bearer ')) throw 0; req.user=jwt.verify(h.slice(7),SECRET); next(); } catch { res.status(401).json({ok:false,error:'Unauthorized'}); } }
 function admin(req,res,next){ if(req.user?.role!=='admin') return res.status(403).json({ok:false,error:'Admin only'}); next(); }
 
+app.get('/transactions',auth,async(req,res)=>{if(req.user.role!=='user')return res.status(403).json({ok:false,error:'User only'});const tx=await Transaction.find({userId:req.user.id}).sort({createdAt:-1}).populate('submissionId','taskId');res.json(tx);});
 app.get('/health',(req,res)=>res.json({ok:true,database:mongoose.connection.readyState===1}));
 
 app.post('/auth/register', async (req,res)=>{
