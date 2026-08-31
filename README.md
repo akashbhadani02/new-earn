@@ -1,30 +1,7 @@
-# EarnFlow — MongoDB + Vercel
+# EarnFlow Vercel + MongoDB
 
-## IMPORTANT Vercel setup
-Upload the contents of this folder to the **root of your GitHub repository**. Do not put them inside another `earnflow/` folder unless you set Vercel Root Directory to that folder.
+Deploy the repository root directly to Vercel. Keep `index.html` at the repository root and `api/[...path].js` as the catch-all API function.
 
-The API uses a Vercel catch-all function at `api/[...all].js`, so these routes work:
-- `/api/health`
-- `/api/auth/register`
-- `/api/auth/login`
-- `/api/auth/admin-login`
-- `/api/tasks`
-- `/api/me`
-- `/api/submissions`
-- `/api/admin/submissions`
+Environment Variables: MONGODB_URI, JWT_SECRET, ADMIN_USER, ADMIN_PASSWORD.
 
-Environment Variables in Vercel:
-- `MONGODB_URI`
-- `JWT_SECRET`
-- `ADMIN_USER`
-- `ADMIN_PASSWORD`
-
-After adding/changing variables, Redeploy.
-
-MongoDB Atlas must allow connections from your deployment (for initial testing, configure Network Access appropriately).
-
-Local:
-`npm install`
-`npm start`
-
-Admin demo: `admin` / `deoxy` (change for production).
+Admin demo: admin / deoxy (change in production).

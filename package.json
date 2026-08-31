@@ -1,9 +1,7 @@
 {
-  "name": "earnflow-mongodb-vercel",
-  "version": "1.0.0",
+  "name": "earnflow",
+  "version": "2.0.0",
   "private": true,
-  "engines": { "node": ">=20" },
-  "scripts": { "start": "node backend/server.js", "dev": "node backend/server.js" },
   "dependencies": {
     "bcryptjs": "^2.4.3",
     "express": "^4.21.2",
