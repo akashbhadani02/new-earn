@@ -1,7 +1,20 @@
 const express=require('express'),path=require('path'),jwt=require('jsonwebtoken'),bcrypt=require('bcryptjs'),mongoose=require('mongoose');
 const User=require('./models/User'),Task=require('./models/Task'),Submission=require('./models/Submission'),Transaction=require('./models/Transaction');
 const app=express(),PORT=process.env.PORT||3000,SECRET=process.env.JWT_SECRET||'CHANGE_ME';
-app.use(express.json({limit:'10mb'}));app.use(express.static(path.join(__dirname,'../frontend')));let dbPromise;
+app.use(express.json({limit:'10mb'}));app.use(express.static(path.join(__dirname,'../public')));
+
+// Ensure MongoDB is connected before database routes execute (local + Vercel).
+let dbPromise=null;
+function ensureDb(){
+  if(!process.env.MONGODB_URI) throw new Error('MONGODB_URI is not configured');
+  if(mongoose.connection.readyState===1) return Promise.resolve();
+  if(!dbPromise) dbPromise=mongoose.connect(process.env.MONGODB_URI).catch(err=>{dbPromise=null; throw err});
+  return dbPromise;
+}
+app.use(async (req,res,next)=>{
+  if(req.path.startsWith('/api/')) { try { await ensureDb(); } catch(e) { return res.status(500).json({error:'Database connection failed',details:e.message}); } }
+  next();
+});let dbPromise;
 async function connectDB(){
   if(!process.env.MONGODB_URI) throw new Error('MONGODB_URI is not configured');
   if(mongoose.connection.readyState===1) return;
@@ -50,7 +63,7 @@ app.get('/api/admin/submissions',auth,admin,async(req,res)=>{const s=await Submi
 app.post('/api/admin/submissions/:id/approve',auth,admin,async(req,res)=>{const session=await mongoose.startSession();try{session.startTransaction();const s=await Submission.findById(req.params.id).populate('taskId','reward').session(session);if(!s||s.status!=='under_review')throw Error('Submission already reviewed or not found');s.status='approved';s.reviewedAt=new Date();await s.save({session});await User.findByIdAndUpdate(s.userId,{$inc:{wallet:s.taskId.reward}},{session});await Transaction.create([{userId:s.userId,submissionId:s._id,amount:s.taskId.reward}],{session});await session.commitTransaction();res.json({ok:true,credited:s.taskId.reward})}catch(e){await session.abortTransaction();res.status(400).json({error:e.message})}finally{session.endSession()}});
 app.post('/api/admin/submissions/:id/reject',auth,admin,async(req,res)=>{const s=await Submission.findOneAndUpdate({_id:req.params.id,status:'under_review'},{$set:{status:'rejected',rejectionReason:req.body.reason||'Proof/review could not be verified.',reviewedAt:new Date()}},{new:true});if(!s)return res.status(400).json({error:'Submission already reviewed or not found'});res.json({ok:true})});
 app.get('/api/health',(req,res)=>res.json({ok:true,database:mongoose.connection.readyState===1}));
-app.get('*',(req,res)=>res.sendFile(path.join(__dirname,'../frontend/index.html')));
+app.get('*',(req,res)=>res.sendFile(path.join(__dirname,'../public/index.html')));
 
-if(require.main===module){app.listen(PORT,()=>console.log(`EarnFlow running on ${PORT}`));}
+if(require.main===module){ensureDb().catch(e=>console.error('MongoDB connection:',e.message));app.listen(PORT,()=>console.log(`EarnFlow running on ${PORT}`));}
 module.exports=app;
