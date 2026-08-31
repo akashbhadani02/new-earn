@@ -3,18 +3,7 @@ const User=require('./models/User'),Task=require('./models/Task'),Submission=req
 const app=express(),PORT=process.env.PORT||3000,SECRET=process.env.JWT_SECRET||'CHANGE_ME';
 app.use(express.json({limit:'10mb'}));app.use(express.static(path.join(__dirname,'../public')));
 
-// Ensure MongoDB is connected before database routes execute (local + Vercel).
-let dbPromise=null;
-function ensureDb(){
-  if(!process.env.MONGODB_URI) throw new Error('MONGODB_URI is not configured');
-  if(mongoose.connection.readyState===1) return Promise.resolve();
-  if(!dbPromise) dbPromise=mongoose.connect(process.env.MONGODB_URI).catch(err=>{dbPromise=null; throw err});
-  return dbPromise;
-}
-app.use(async (req,res,next)=>{
-  if(req.path.startsWith('/api/')) { try { await ensureDb(); } catch(e) { return res.status(500).json({error:'Database connection failed',details:e.message}); } }
-  next();
-});let dbPromise;
+let dbPromise;
 async function connectDB(){
   if(!process.env.MONGODB_URI) throw new Error('MONGODB_URI is not configured');
   if(mongoose.connection.readyState===1) return;
