@@ -1,19 +1,27 @@
-# EarnFlow MongoDB
+# EarnFlow — MongoDB + Vercel fixed
 
-GitHub/Vercel-ready Express + MongoDB/Mongoose starter.
+This version uses a Vercel serverless entrypoint at `api/index.js`, with Express serving the frontend and API.
 
-## Run
-1. Create a MongoDB Atlas database.
-2. Copy `.env.example` to `.env` and set `MONGODB_URI` and `JWT_SECRET`.
-3. `cd backend && npm install`
-4. `node server.js`
-5. Open http://localhost:3000
+## Deploy
+1. Push the contents of this folder to GitHub.
+2. Import the repository into Vercel. Leave Root Directory as the repository root.
+3. Vercel detects `api/index.js` automatically.
+4. Add environment variables:
+   - `MONGODB_URI`
+   - `JWT_SECRET`
+   - `ADMIN_USER`
+   - `ADMIN_PASSWORD`
+5. Redeploy.
 
-Admin demo:
-username: admin
-password: deoxy
+## Local
+`npm install`
+`node backend/server.js`
 
-For production, change the admin password and JWT secret in environment variables. Never commit `.env`.
+## Demo admin
+Username: admin
+Password: deoxy
+
+Change the production password in Vercel environment variables. Never commit `.env`.
 
 ## Important
-Wallet credit is performed only by the authenticated admin approval endpoint. Use the app for genuine product feedback; do not automate or fabricate reviews.
+Use genuine feedback only; do not fabricate or automate reviews.
