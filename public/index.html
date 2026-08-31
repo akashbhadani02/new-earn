@@ -2,7 +2,32 @@
 <style>
 *{box-sizing:border-box}body{margin:0;font-family:system-ui,Arial;background:#f4f7fb;color:#0f172a}.app{max-width:1150px;margin:auto;padding:14px 14px 80px}.head{display:flex;justify-content:space-between;align-items:center;gap:8px}.brand{font-size:22px;font-weight:900}.wallet{background:#fff;padding:10px;border-radius:12px;border:1px solid #e2e8f0;color:#16a34a;font-weight:900}.hero,.card{background:#fff;border:1px solid #e2e8f0;border-radius:17px;padding:18px;margin-top:14px}.hero{background:#2563eb;color:#fff}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:14px}.stat{padding:10px;background:#ffffff1c;border-radius:10px}.stat b{display:block;font-size:20px}.tasks{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.task{background:#fff;border:1px solid #e2e8f0;border-radius:15px;overflow:hidden}.task img{width:100%;height:150px;object-fit:cover}.body{padding:13px}.muted{font-size:12px;color:#64748b}.reward{color:#16a34a;font-size:19px;font-weight:900;margin:6px 0}.btn{border:0;border-radius:9px;padding:10px 13px;font-weight:900;cursor:pointer}.primary{background:#2563eb;color:#fff}.ok{background:#16a34a;color:#fff}.bad{background:#fee2e2;color:#991b1b}.light{background:#eef2f7}.badge{display:inline-block;padding:5px 8px;border-radius:20px;font-size:10px;font-weight:900}.review{background:#ede9fe;color:#6d28d9}.approved{background:#dcfce7;color:#166534}.rejected{background:#fee2e2;color:#991b1b}.pending{background:#fef3c7;color:#92400e}.modal{display:none;position:fixed;inset:0;background:#0008;align-items:center;justify-content:center;padding:12px}.modal.show{display:flex}.box{background:#fff;border-radius:16px;padding:18px;width:min(520px,100%);max-height:92vh;overflow:auto}input,textarea{width:100%;padding:10px;border:1px solid #dbe2ea;border-radius:9px;margin:5px 0 10px}.proof{width:180px;height:125px;object-fit:cover;border-radius:9px}.adminitem{border:1px solid #e2e8f0;border-radius:12px;padding:12px;margin:10px 0}.bottom{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #e2e8f0;height:60px;display:flex;justify-content:center;gap:25px}.bottom button{border:0;background:none;font-weight:900}@media(max-width:700px){.tasks{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,1fr)}.head .wallet{font-size:12px}.proof{width:100%;height:190px}}
 </style></head><body><div class="app"><div class="head"><div class="brand">₹ EarnFlow</div><div style="display:flex;gap:7px"><button class="btn light" onclick="adminLogin()">🛡️ Admin</button><div class="wallet">₹<span id="wallet">0.00</span></div></div></div>
-<div id="login" class="card"><h2>User Login / Register</h2><input id="un" placeholder="Username"><input id="pw" type="password" placeholder="Password"><button class="btn primary" onclick="userLogin()">Login</button> <button class="btn light" onclick="registerUser()">Register</button><p id="msg" class="muted"></p></div>
+<div id="login" class="card">
+  <div style="text-align:center;margin-bottom:14px">
+    <h2 style="margin:0 0 6px">Welcome to EarnFlow</h2>
+    <p class="muted" style="margin:0">Login to your account or create a new one</p>
+  </div>
+  <div style="display:flex;gap:8px;margin-bottom:14px">
+    <button id="loginTab" class="btn primary" style="flex:1" onclick="showLoginForm()">🔐 Login</button>
+    <button id="registerTab" class="btn light" style="flex:1" onclick="showRegisterForm()">📝 Register</button>
+  </div>
+  <div id="loginForm">
+    <h3>Login</h3>
+    <input id="un" placeholder="Username" autocomplete="username">
+    <input id="pw" type="password" placeholder="Password" autocomplete="current-password">
+    <button class="btn primary" style="width:100%" onclick="userLogin()">Login to Account</button>
+    <p class="muted" style="text-align:center">New user? <button class="btn light" onclick="showRegisterForm()">Create Account</button></p>
+  </div>
+  <div id="registerForm" style="display:none">
+    <h3>Create New Account</h3>
+    <input id="regUn" placeholder="Choose username" autocomplete="username">
+    <input id="regPw" type="password" placeholder="Create password (minimum 6 characters)" autocomplete="new-password">
+    <input id="regPw2" type="password" placeholder="Confirm password" autocomplete="new-password">
+    <button class="btn ok" style="width:100%" onclick="registerUser()">Create Account & Continue</button>
+    <p class="muted" style="text-align:center">Already registered? <button class="btn light" onclick="showLoginForm()">Login</button></p>
+  </div>
+  <p id="msg" class="muted" style="text-align:center"></p>
+</div>
 <div id="main" style="display:none"><div class="hero"><h1>20 Daily Product Review Tasks</h1><p>Submit genuine feedback and proof. Rewards are locked until admin approval.</p><div class="stats"><div class="stat">Submitted<b id="submitted">0</b></div><div class="stat">Review<b id="under">0</b></div><div class="stat">Approved<b id="appr">0</b></div><div class="stat">Wallet<b id="wstat">₹0</b></div></div></div><div class="tasks" id="tasks"></div></div>
 <div id="admin" style="display:none"><div class="card"><div style="display:flex;justify-content:space-between"><div><h2>🛡️ Admin Panel</h2><div class="muted">Approve only after checking genuine review and proof.</div></div><button class="btn light" onclick="logout()">Logout</button></div><div id="queue"></div></div></div>
 </div><nav class="bottom"><button onclick="home()">🏠 Tasks</button><button onclick="showWallet()">💰 Wallet</button><button onclick="adminLogin()">🛡️ Admin</button></nav>
@@ -11,22 +36,31 @@
 let token=localStorage.getItem("ef_user"),adminToken=localStorage.getItem("ef_admin"),tasks=[],active=null,seconds=30,tm=null,proof="";
 const $=id=>document.getElementById(id),api=async(u,o={})=>{let r=await fetch(u,{...o,headers:{"Content-Type":"application/json",...(o.headers||{})}});let text=await r.text(),j;try{j=JSON.parse(text)}catch(e){throw Error(`Server error (${r.status}). Check Vercel API/Environment Variables.`)}if(!r.ok)throw Error(j.error||"Request failed");return j};
 async function loadTasks(){tasks=await api("/api/tasks");render()}
+function showLoginForm(){
+  $("loginForm").style.display="block";$("registerForm").style.display="none";
+  $("loginTab").className="btn primary";$("registerTab").className="btn light";$("msg").textContent="";
+}
+function showRegisterForm(){
+  $("loginForm").style.display="none";$("registerForm").style.display="block";
+  $("loginTab").className="btn light";$("registerTab").className="btn primary";$("msg").textContent="";
+}
 async function userLogin(){
   const username=$("un").value.trim(), password=$("pw").value;
   if(!username||!password){$("msg").textContent='Enter username and password.';return}
   $("msg").textContent='Logging in...';
-  try{const x=await api("/api/auth/login",{method:"POST",body:JSON.stringify({username,password})});token=x.token;localStorage.setItem("ef_user",token);await startUser()}catch(e){$("msg").textContent=e.message}
+  try{const x=await api("/api/auth/login",{method:"POST",body:JSON.stringify({username,password})});token=x.token;localStorage.setItem("ef_user",token);await startUser()}
+  catch(e){$("msg").textContent=e.message}
 }
 async function registerUser(){
-  const username=$("un").value.trim(), password=$("pw").value;
-  if(!username||!password){$("msg").textContent='Enter username and password.';return}
+  const username=$("regUn").value.trim(), password=$("regPw").value, confirm=$("regPw2").value;
+  if(!username||!password||!confirm){$("msg").textContent='Fill all registration fields.';return}
+  if(password.length<6){$("msg").textContent='Password must be at least 6 characters.';return}
+  if(password!==confirm){$("msg").textContent='Passwords do not match.';return}
   $("msg").textContent='Creating account...';
   try{
     const x=await api("/api/auth/register",{method:"POST",body:JSON.stringify({username,password})});
-    // Registration returns a token, so the new account is immediately logged in.
     token=x.token;localStorage.setItem("ef_user",token);
-    $("msg").textContent='Account created successfully.';
-    await startUser();
+    $("msg").textContent='Account created successfully.';await startUser();
   }catch(e){$("msg").textContent=e.message}
 }
 async function startUser(){$("login").style.display="none";$("main").style.display="block";await loadTasks();await me()}
